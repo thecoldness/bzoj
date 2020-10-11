@@ -1,0 +1,61 @@
+#include <cstdio>
+#include <cctype>
+#include <algorithm>
+using namespace std;
+
+typedef long long ll;
+
+inline int read()
+{
+	int res = 0;
+	char c;
+	bool flag = false;
+	c = getchar();
+	while(!isdigit(c))
+	{
+		flag = (c == '-');
+		c = getchar();
+	}
+	while(isdigit(c))
+	{
+		res = res * 10 + (c ^ 48);
+		c = getchar();
+	}
+	return !flag ? res : -res;
+}
+
+const int Max_n = 1e7 + 5;
+
+bool vis[Max_n];
+
+int n , prime[Max_n] , tot , phi[Max_n];
+
+ll pre[Max_n] , ans;
+
+int main()
+{
+	n = read();
+	for(int i = 2 ; i <= n ; ++ i)
+	{
+		if(!vis[i])
+			prime[ ++ tot] = i , vis[i] = true , phi[i] = i - 1;
+		for(int j = 1 ; j <= tot && (ll) prime[j] * i <= n ; ++ j)
+		{
+			vis[i * prime[j]] = true;
+			if(i % prime[j] == 0)
+			{
+				phi[i * prime[j]] = phi[i] * prime[j];
+				break;
+			}
+			phi[i * prime[j]] = phi[i] * phi[prime[j]];
+		}
+	}
+	for(int i = 1 ; i <= n ; ++ i)
+		pre[i] = pre[i - 1] + phi[i];
+	for(int i = 1 ; i <= tot ; ++ i)
+		ans += pre[n / prime[i]];
+	ans *= 2;
+	ans += tot;
+	printf("%lld\n" , ans);
+	return 0;
+}
