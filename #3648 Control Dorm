@@ -1,0 +1,231 @@
+#include <cstdio>
+#include <cctype>
+#include <climits>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+
+namespace thecold
+{
+	typedef long long ll;
+	
+	inline int read()
+	{
+		int res = 0; bool flag = false;
+		char c = getchar();
+		while(!isdigit(c))
+			flag = (c == '-') , c = getchar();
+		while(isdigit(c))
+			res = res * 10 + (c ^ 48) , c = getchar();
+		return !flag ? res : -res;
+	}
+	
+	const int Max_n = 1e5 + 5;
+	const int Max_m = 105;
+	const int Max_k = 1e7 + 5;
+	
+	int n , m , siz[Max_n] , root , lag[Max_n] , tot , st[Max_n] , tp;
+	int head[Max_n] , bit[Max_n * 5] , dis[Max_n] , k , delta;
+	
+	ll ans;
+	
+	bool used[Max_n];
+	
+	inline int lowbit(const int x)
+	{
+		return x & -x;
+	}
+	
+	inline void add(int x , const int val)
+	{
+		x += delta;
+		for(int i = x ; i <= n + delta; i += lowbit(i))
+			bit[i] += val;
+	}
+	
+	inline int query(int pos)
+	{
+		pos += delta;
+		if(pos < 0) return 0; int ret = 0;
+		for(int i = pos ; i ; i -= lowbit(i))
+			ret += bit[i];
+		return ret;
+	}
+	
+	struct node
+	{
+		int nex , to;
+		node(int a , int b)
+		{
+			nex = a , to = b;
+		}
+		node(){}
+	}edge[Max_n << 1];
+	
+	inline void add_edge(int x , int y)
+	{
+		edge[ ++ tot] = node(head[x] , y) , head[x] = tot;
+		edge[ ++ tot] = node(head[y] , x) , head[y] = tot;
+	}
+	
+	bool vis[Max_n] , get_ring;
+	
+	int isring[Max_n] , rev[Max_n] , sum;
+	
+	inline void dfs_root(int now , int from , int sizz)
+	{
+		siz[now] = 1 , lag[now] = 0;
+		for(int i = head[now] ; i ; i = edge[i].nex)
+		{
+			int nex = edge[i].to;
+			if(used[nex] || nex == from || isring[nex])	continue;
+			dfs_root(nex , now , sizz);
+			siz[now] += siz[nex] , lag[now] = max(lag[now] , siz[nex]);
+		}
+		lag[now] = max(lag[now] , sizz - siz[now]);
+		if(lag[now] < lag[root]) root = now;
+	}
+	
+	inline void dfs_dis(int now , int from)
+	{
+		st[ ++ tp] = dis[now];
+		for(int i = head[now] ; i ; i = edge[i].nex)
+		{
+			int nex = edge[i].to;
+			if(nex == from || used[nex])	continue;
+			dis[nex] = dis[now] + 1; dfs_dis(nex , now);
+		}
+	}
+	
+	inline void calc(const int now)
+	{
+		if(k == 1) ++ ans; tp = 0;
+		for(int i = head[now] ; i ; i = edge[i].nex)
+		{
+			int nex = edge[i].to; if(used[nex] || isring[nex]) continue;
+			int lsttp = tp; dis[nex] = 1 , dfs_dis(nex , now);
+			for(int j = lsttp + 1 ; j <= tp ; ++ j)
+			{
+//				if(st[tp] + 1 >= k) ++ ans; bug
+				if(st[j] + 1 >= k) ++ ans; ans += query(n) - query(k - st[j] - 2);
+			}
+			for(int j = lsttp + 1 ; j <= tp ; ++ j)	add(st[j] , 1);
+		}
+	}
+	
+	inline void solve(int now)
+	{
+		calc(now); used[root] = true;
+		while(tp) add(st[tp --] , -1);
+		for(int i = head[now] ; i ; i = edge[i].nex)
+		{
+			int nex = edge[i].to; if(used[nex])	continue;
+			root = 0; dfs_root(nex , root , siz[nex]); solve(root);
+		}
+	}
+	
+	void dfs_ring(const int now , const int from)
+	{
+		if(vis[now])
+		{
+			get_ring = true;
+			for(int i = tp ; i ; -- i) 
+				if(st[i] != now) isring[st[i]] = ++ sum , used[st[i]] = true , rev[sum] = st[i];
+				else break;
+			return isring[now] = ++ sum , used[now] = true , rev[sum] = now , void();
+		}
+		st[ ++ tp] = now , vis[now] = true;
+		for(int i = head[now] ; i ; i = edge[i].nex)
+		{
+			int nex = edge[i].to; if(nex == from) continue;
+			dfs_ring(nex , now);
+			if(get_ring) break;// bug
+		}
+		vis[now] = false , -- tp;
+	}
+	
+	inline void main()
+	{
+		n = read() , m = read() , k = read();
+		for(int i = 1 ; i <= m ; ++ i)
+			add_edge(read() , read());
+		root = 0 , lag[0] = INT_MAX;
+		if(m == n - 1)
+		{
+			dfs_root(1 , 0 , n);
+			solve(root); printf("%lld\n" , ans);
+		}
+		else
+		{
+			dfs_ring(1 , 0);
+			for(int now = 1 ; now <= n ; ++ now)
+			if(isring[now])
+			{
+//				printf("%d " , query(n));	
+				while(tp) add(st[tp --] , -1);
+				tp = 0; dfs_root(now , 0 , 0);// in order to get size
+//				printf("%d " , query(n)); 
+				for(int i = head[now] ; i ; i = edge[i].nex)
+				{
+					int nex = edge[i].to; if(isring[nex] || used[nex]) continue;
+					int lsttp = tp; dis[nex] = 1 , dfs_dis(nex , now);
+					for(int j = lsttp + 1 ; j <= tp ; ++ j)
+					{
+						if(st[j] + 1 >= k) ++ ans;	ans += query(n) - query(k - st[j] - 2);
+					}
+					for(int j = lsttp + 1 ; j <= tp ; ++ j)	add(st[j] , 1);
+				}
+				while(tp) add(st[tp --] , -1);
+//				printf("%lld root %d\n" , ans , query(n));
+				for(int i = head[now] ; i ; i = edge[i].nex)
+				{
+					int nex = edge[i].to; if(isring[nex]) continue;
+					root = 0; dfs_root(nex , now , siz[nex]); solve(root);
+				}
+//				printf("%lld notroot %d\n" , ans , query(n));
+			}
+//			printf("%lld\n" , ans);
+			memset(used , false , sizeof(used)) , delta = 3 * n , tp = 0;
+			for(int i = 1 ; i <= n ; ++ i) if(isring[i]) used[i] = true;
+//			printf("%d\n" , query(n));
+			for(int i = 1 ; i <= sum ; ++ i)
+			{
+				int now = rev[i] , lsttp = tp;
+				dis[now] = 0 , dfs_dis(now , 0);
+				for(int j = lsttp + 1 ; j <= tp ; ++ j) ans += query(n) - query(k - i - st[j] - 2);
+				for(int j = lsttp + 1 ; j <= tp ; ++ j) add(st[j] - i , 1);
+			}
+//			printf("%lld\n" , ans);
+			memset(bit , 0 , sizeof(bit)) , tp = 0 , delta = 4 * n;
+//			printf("%d\n" , query(n));
+			for(int i = sum ; i ; -- i)
+			{
+				int now = rev[i] , lsttp = tp;	dis[now] = 0; dfs_dis(now , 0);
+//				for(int j = lsttp + 1 ; j <= tp ; ++ j) ans += query(n) - query(k - n - st[j] - i - 2); bug
+				for(int j = lsttp + 1 ; j <= tp ; ++ j) ans += query(n) - query(k - sum - st[j] - i - 2);
+				for(int j = lsttp + 1 ; j <= tp ; ++ j) add(st[j] - i , 1);
+			}
+//			printf("%lld %d\n" , ans , sum);
+			printf("%lld\n" , ans);
+		}
+	}
+}
+
+int main()
+{
+//	freopen("data.in" , "r" , stdin);
+	thecold::main();
+	return 0;
+}
+/*
+9 8 3      
+1 2
+1 3
+1 4
+1 5
+1 6
+6 9
+2 7
+2 8
+ans = 28
+*/
