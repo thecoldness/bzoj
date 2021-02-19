@@ -1,0 +1,112 @@
+#include <cstdio>
+#include <cctype>
+#include <cstring>
+#include <algorithm>
+using namespace std;
+
+namespace thecold
+{
+	inline int read()
+	{
+		int res = 0; bool flag = false;
+		char c = getchar();
+		while(!isdigit(c))
+			flag = (c == '-') , c = getchar();
+		while(isdigit(c))
+			res = res * 10 + (c ^ 48) , c = getchar();
+		return !flag ? res : -res;
+	}
+
+	const int Max_n = 1e5 + 5;
+	const int Max_l = 55;
+	const int INF = 1e9;
+
+	int n , l , f[Max_n][Max_l] , q;
+	int a[Max_n] , sum[Max_n] , ans[Max_n];
+
+	struct node
+	{
+		int l , r , bel;
+		node(int a , int b)
+		{
+			l = a , r = b;
+		}
+		node(){}
+	}opt[20][Max_n];
+
+	inline void Max(int &x , const int y)
+	{
+		if(y > x) x = y;
+	}
+
+	void divide(const int ll , const int rr , const int ql , const int qr , const int dep)
+	{
+		if(ql > qr) return;
+		if(ll == rr)
+		{
+			if(l == 1) for(int i = ql ; i <= qr ; ++ i) Max(ans[opt[dep][i].bel] , a[ll]);
+			return;
+		}
+		int mid = (ll + rr) >> 1 , tl = ql - 1 , tr = qr + 1;
+		for(int i = ql ; i <= qr ; ++ i)
+			if(opt[dep][i].l > mid) opt[dep + 1][ -- tr] = opt[dep][i];
+			else if(opt[dep][i].r <= mid) opt[dep + 1][ ++ tl] = opt[dep][i];
+		divide(ll , mid , ql , tl , dep + 1) , divide(mid + 1 , rr , tr , qr , dep + 1);
+		for(int i = ll ; i <= rr ; ++ i)
+			for(int j = 0 ; j < l ; ++ j)
+				f[i][j] = j == 0 ? 0 : -INF;
+		for(int i = 1 ; i < l ; ++ i)
+			f[mid - i + 1][i] = sum[mid] - sum[mid - i] , f[mid + i][i] = sum[mid + i] - sum[mid]; 
+		for(int j = 0 ; j < l ; ++ j)
+			for(int i = mid - j ; i >= ll ; -- i)
+			{
+				f[i][j] = f[i + 1][j];
+				if(i + l <= mid - j + 1) Max(f[i][j] , f[i + l][j] + sum[i + l - 1] - sum[i - 1]);
+			}
+		int tmp = f[mid][0]; f[mid][0] = 0;
+		for(int j = 0 ; j < l ; ++ j)
+			for(int i = mid + 1 + j ; i <= rr ; ++ i)
+			{
+				f[i][j] = f[i - 1][j];
+				if(i - l >= mid + j) Max(f[i][j] , f[i - l][j] + sum[i] - sum[i - l]);
+			}
+		f[mid][0] = tmp;
+		for(int i = ql ; i <= qr ; ++ i)
+		{
+			if(opt[dep][i].l > mid || opt[dep][i].r <= mid) continue;
+			int bel = opt[dep][i].bel , li = opt[dep][i].l , ri = opt[dep][i].r;
+			ans[bel] = f[li][0] + f[ri][0];
+			for(int i = 1 ; i < l ; ++ i) Max(ans[bel] , f[li][i] + f[ri][l - i]);
+		}
+	}
+
+	inline void main()
+	{
+		n = read() , l = read();
+		for(int i = 1 ; i <= n ; ++ i) sum[i] = sum[i - 1] + (a[i] = read());
+		q = read();
+		for(int i = 1 ; i <= q ; ++ i) opt[0][i].l = read() , opt[0][i].r = read() , opt[0][i].bel = i;
+		divide(1 , n , 1 , q , 0);
+		for(int i = 1 ; i <= q ; ++ i) printf("%d\n" , ans[i]);
+	}
+}
+
+int main()
+{
+	thecold::main();
+	return 0;
+}
+/*
+15 3
+3 1 5 -2 3 -2 -2 2 2 2 0 3 2 -1 0
+9
+8 10
+10 10
+9 11
+2 14
+5 14
+5 13
+12 13
+7 13
+2 10
+*/
